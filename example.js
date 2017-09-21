@@ -1,5 +1,5 @@
 // https://github.com/alsotang/node-lessons/tree/master/lesson3
-
+// 参考项目https://segmentfault.com/a/1190000007326795
 import api = require('./api');
 import cheerio = require('cheerio');
 // 一
@@ -117,3 +117,78 @@ interface IArticle {
     text: String;
 }
 export = IArticle;
+
+import mongoose = require('mongoose');
+import IArticle = require('./IArticle');
+interface IArticleModel extends IArticle, mongoose.Document { }
+
+const ArticleSchema = new mongoose.Schema({
+    title: { type: String },
+    url: { type: String },
+    text: { type: String },
+});
+
+const Article = mongoose.model<IArticleModel>("Article", ArticleSchema);
+export = Article;
+
+import superagent = require('superagent');
+import cheerio = require('cheerio');
+import models = require('./models');
+const Article = models.Article;
+
+export const get_index_urls = async function () {
+    const res = await remote_get('http://cnodejs.org/');
+
+    const $ = cheerio.load(res.text);
+    let urls: string[] = [];
+    $('.topic_title_wrapper').each((index, element) => {
+        urls.push('http://cnodejs.org' + $(element).find('.topic_title').first().attr('href'));
+    });
+    return urls;
+
+}
+export const fetch_content = async function (url: string) {
+    const res = await remote_get(url);
+
+    const $ = cheerio.load(res.text);
+    let article = new Article();
+    article.text = $('.topic_content').first().text();
+    article.title = $('.topic_full_title').first().text().replace('置顶', '').replace('精华', '').trim();
+    article.url = url;
+    console.log('获取成功：' + article.title);
+    article.save();
+
+}
+export const remote_get = function (url: string) {
+
+    return new Promise<superagent.Response>((resolve, reject) => {
+        superagent.get(url)
+            .end(function (err, res) {
+                if (!err) {
+                    resolve(res);
+                } else {
+                    reject(err);
+                }
+            });
+    });
+}
+
+import api = require('./api');
+import helper = require('./helper');
+import cheerio = require('cheerio');
+
+(async () => {
+
+    try {
+        let urls = await api.get_index_urls();
+        for (let i = 0; i < urls.length; i++) {
+            await helper.wait_seconds(1);
+            await api.fetch_content(urls[i]);
+        }
+    } catch (err) {
+        console.log(err);
+    }
+
+    console.log('完毕！');
+
+})();
