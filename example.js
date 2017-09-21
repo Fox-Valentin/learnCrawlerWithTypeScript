@@ -1,3 +1,5 @@
+// https://github.com/alsotang/node-lessons/tree/master/lesson3
+
 import api = require('./api');
 import cheerio = require('cheerio');
 // 一
@@ -77,3 +79,41 @@ export const remote_get = function (url: string) {
     });
     return promise;
 }
+// 修改app.ts文件为
+// 根据api的功能 将逻辑分为二步
+// 1 获取首页的链接
+// 2 获取链接的内容
+// 3 每次抓取链接时延时一秒
+import api = require('./api');
+import helper = require('./helper');
+import cheerio = require('cheerio');
+
+const go = async () => {
+    let urls = await api.get_index_urls();
+    for (let i = 0; i < urls.length; i++) {
+        await helper.wait_seconds(1);
+        let text = await api.get_content(urls[i]);
+        console.log(text);
+    }
+}
+go();
+
+import * as mongoose from 'mongoose';
+
+mongoose.connect('mongodb://127.0.0.1/cnodejs_data', {
+    server: { poolSize: 20 }
+}, function (err) {
+    if (err) {
+        process.exit(1);
+    }
+});
+
+// models
+export const Article = require('./article');
+
+interface IArticle {
+    title: String;
+    url: String;
+    text: String;
+}
+export = IArticle;

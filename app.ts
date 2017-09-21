@@ -1,20 +1,21 @@
-// 1 引入api和cheerio
-// 2 定义异步函数go
-// 3 调用api中的 remote get 返回res 其中包含 首页源码
-// 4 解析源码 截取链接
-// 5 通过链接去获取文章内容
-import api = require("./api")
+// 引入 api cheerio helper
+// 从首页获取链接数组
+// 循环数据 请求内容
+// 每次循环 间隔一秒
+import api = require('./api')
 import cheerio = require('cheerio')
-
+import helper = require('./helper')
 const go = async () => {
-  const res = await api.remote_get('http://cnodejs.org/')
-  const $ = cheerio.load(res.text)
-  $('.topic_title_wrapper').each( async (index,el) => {
-    let url = 'http://cnodejs.org' + $(el).find('.topic_title').first().attr('href')
-    console.log(url)
-    const res_content = await api.remote_get(url)
-    const $_content = cheerio.load(res_content.text)
-    console.log($_content('.topic_content').first().text())
-  })
+  try{
+    let urls = await api.getIndexUrls()
+    for (let i = 0; i< urls.length; i++){
+      await helper.waitSecond(1)
+      await api.getContent(urls[i])
+    }
+  }catch(err){
+    throw err
+  }
+  console.log('done')
+  process.exit(1)
 }
 go()
